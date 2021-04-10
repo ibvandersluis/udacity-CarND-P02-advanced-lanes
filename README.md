@@ -1,4 +1,4 @@
-# Lane Detection
+# Advanced Lane Detection
 
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
@@ -8,14 +8,12 @@ Like the first project, the goal of this project is to take an image of the road
 
 Some basic scripts from the lessons and exercises are located in [`scripts/`](./scripts). The images used for those scripts are found in [`images/`](./images). The project, started from the project Udacity repository [here](https://github.com/udacity/CarND-Advanced-Lane-Lines), is found in [`project/`](./project).
 
-## Launching the Project
+## The Project
 
-Navigate to the `project/` directory and run
+There is no Jupyter Notebook for this project. You will find everything you need on the project in the `project/` directory.
 
-```bash
-jupyter notebook
-```
-
-Then open P1.ipynb.
-
-Find the writeup for the project [here](./project/writeup.md).
+- The main Python script can be found at [`project/advanced_lane_finding.py`](./project/advanced_lane_finding.py)
+- The library of supporting functions can be found at [`project/p2_functions.py`](./project/p2_functions.py)
+- The images output by the pipeline are in [`project/output_images/`](./project/output_images/)
+- The output video is at [`project/output_video.mp4`](./project/output_video.mp4)
+- The writeup for the project is at [`project/writeup.md`](./project/writeup.md).
