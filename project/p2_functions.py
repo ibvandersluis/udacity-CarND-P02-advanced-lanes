@@ -10,6 +10,7 @@ def calibrate_camera(dirpath, nx, ny):
     nx and ny specify this size of the chessboard used for calibration.
     """
 
+    # Create empty arrays for storing calibration data
     objpoints = []
     imgpoints = []
     img_shape = None
@@ -17,21 +18,27 @@ def calibrate_camera(dirpath, nx, ny):
     calibration_images = os.listdir(dirpath) # Get file names for images
 
     for photo in calibration_images:
+        # Create empty numpy array for each image
+        # For each corner, the x-y pos and depth (which is 0 for object points)
+        # will be stored
         objp = np.zeros((nx*ny, 3), np.float32)
         objp[:,:2] = np.mgrid[0:nx,0:ny].T.reshape(-1,2)
 
+        # Read in the image and convert to grayscale
         img = cv2.imread(dirpath + photo)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img_shape = gray.shape[::-1]
+        if img_shape == None:
+            img_shape = gray.shape[::-1] # Store image shape for calibration
 
         ret, corners = cv2.findChessboardCorners(gray, (nx, ny), None)
 
+        # Not all vertices are visible in all calibration photos
+        # If they are and ret == True, append corners and obj points to arrays
         if ret == True:
             imgpoints.append(corners)
             objpoints.append(objp)
     
     return cv2.calibrateCamera(objpoints, imgpoints, img_shape, None, None)
-
 
 def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -378,7 +385,54 @@ def measure_curvature_real():
 
     return left_curverad, right_curverad
 
-def pipeline(img, mtx, dist, rvecs, tvecs):
-    result = cv2.undistort(img, mtx, dist, None, mtx)
+def thresholds(img, s_thresh=(170, 255), sx_thresh=(20, 100)):
+    img = np.copy(img)
+    # Convert to HLS color space and separate the V channel
+    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+    l_channel = hls[:,:,1]
+    s_channel = hls[:,:,2]
+    # Sobel x
+    sobelx = cv2.Sobel(l_channel, cv2.CV_64F, 1, 0) # Take the derivative in x
+    abs_sobelx = np.absolute(sobelx) # Absolute x derivative to accentuate lines away from horizontal
+    scaled_sobel = np.uint8(255*abs_sobelx/np.max(abs_sobelx))
+    
+    # Threshold x gradient
+    sxbinary = np.zeros_like(scaled_sobel)
+    sxbinary[(scaled_sobel >= sx_thresh[0]) & (scaled_sobel <= sx_thresh[1])] = 1
+    
+    # Threshold color channel
+    s_binary = np.zeros_like(s_channel)
+    s_binary[(s_channel >= s_thresh[0]) & (s_channel <= s_thresh[1])] = 1
+    combined_binary = np.zeros_like(sxbinary)
+    combined_binary[(s_binary == 1) | (sxbinary == 1)] = 1
+    return combined_binary
 
-    return result
+def pipeline(img, mtx, dist, rvecs, tvecs):
+    # Get image size
+    img_size = (img.shape[1], img.shape[0])
+
+    # Apply thresholds and produce binary image
+    binary = thresholds(img)
+
+    # Set the source points for the transformation
+    src = np.float32([[190, 720],
+                      [593, 450],
+                      [686, 450],
+                      [1115, 720]])
+
+    # Set the destination points for the transformation
+    dst = np.float32([[330, 720],
+                      [330, 0],
+                      [950, 0],
+                      [950, 720]])
+
+    # Get the tranformation matrix from src to destination
+    tf_M = cv2.getPerspectiveTransform(src, dst)
+
+    # Get the tranformation matrix from destination to src
+    tf_M_inv = cv2.getPerspectiveTransform(dst, src)
+
+    # Tranform the perspective of the image to top-down
+    tf_img = cv2.warpPerspective(binary, tf_M, img_size)
+
+    return tf_img
