@@ -18,8 +18,8 @@ if __name__ == "__main__":
     # Set the source points for the transformation
     src = np.float32([[190, 720],
                       [593, 450],
-                      [686, 450],
-                      [1115, 720]])
+                      [687, 450],
+                      [1090, 720]])
 
     # Set the destination points for the transformation
     dst = np.float32([[330, 720],
