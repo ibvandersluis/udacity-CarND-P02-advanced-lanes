@@ -26,6 +26,7 @@ class Lane:
         self.px_x = None
         # y values for detected line pixels
         self.px_y = None
+        self.fitx = None
 
 def calibrate_camera(dirpath, nx, ny):
     """
@@ -197,19 +198,19 @@ def find_lane_pixels(binary_warped, nwindows=9, margin=100, minpix=50):
 
     return leftx, lefty, rightx, righty, out_img
 
-def fit_polynomial(binary_warped):
+def fit_polynomial(binary_warped, left_lane, right_lane):
     # Find our lane pixels first
-    leftx, lefty, rightx, righty, out_img = find_lane_pixels(binary_warped)
+    left_lane.px_x, left_lane.px_y, right_lane.px_x, right_lane.px_y, out_img = find_lane_pixels(binary_warped)
 
     # Fit a second order polynomial to each using `np.polyfit`
-    left_fit = np.polyfit(lefty, leftx, 2)
-    right_fit = np.polyfit(righty, rightx, 2)
+    left_lane.current_fit = np.polyfit(left_lane.px_y, left_lane.px_x, 2)
+    right_lane.current_fit = np.polyfit(right_lane.px_y, right_lane.px_x, 2)
 
     # Generate x and y values for plotting
     ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
     try:
-        left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
-        right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+        left_lane.fitx = left_lane.current_fit[0]*ploty**2 + left_lane.current_fit[1]*ploty + left_lane.current_fit[2]
+        right_lane.fitx = right_lane.current_fit[0]*ploty**2 + right_lane.current_fit[1]*ploty + right_lane.current_fit[2]
     except TypeError:
         # Avoids an error if `left` and `right_fit` are still none or incorrect
         print('The function failed to fit a line!')
@@ -218,21 +219,21 @@ def fit_polynomial(binary_warped):
 
     ## Visualization ##
     # Colour in the region between the lanes
-    left_boundary = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
-    right_boundary = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+    left_boundary = np.array([np.transpose(np.vstack([left_lane.fitx, ploty]))])
+    right_boundary = np.array([np.flipud(np.transpose(np.vstack([right_lane.fitx, ploty])))])
     lane = np.hstack((left_boundary, right_boundary))
 
     cv2.fillPoly(out_img, np.int_([lane]), (0,255, 0))
 
     # Colors in the left and right lane regions
-    out_img[lefty, leftx] = [255, 0, 0]
-    out_img[righty, rightx] = [0, 0, 255]
+    out_img[left_lane.px_y, left_lane.px_x] = [255, 0, 0]
+    out_img[right_lane.px_y, right_lane.px_x] = [0, 0, 255]
 
     # Plots the left and right polynomials on the lane lines
     # plt.plot(left_fitx, ploty, color='yellow')
     # plt.plot(right_fitx, ploty, color='yellow')
 
-    return out_img, left_fit, right_fit, ploty
+    return out_img, ploty
 
 def fit_poly(img_shape, leftx, lefty, rightx, righty):
     # Fit a second-order polynomial to left_ and right_fit
@@ -303,7 +304,7 @@ def search_around_poly(binary_warped, left_fit, right_fit, margin=100):
 
     return result
 
-def measure_curvature(left_fit, right_fit, ploty):
+def measure_curvature(left_lane, right_lane, ploty):
     '''
     Calculates the curvature of polynomial functions in meters.
     '''
@@ -314,11 +315,33 @@ def measure_curvature(left_fit, right_fit, ploty):
     # Define y-value where we want radius of curvature
     y_eval = np.max(ploty)
 
-    # Calculation of R_curve (radius of curvature)
-    left_curverad = ((1 + (2*left_fit[0]*y_eval*ym_per_pix + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
-    right_curverad = ((1 + (2*right_fit[0]*y_eval*ym_per_pix + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
+    # Transform equations in terms of real-world measurements
+    left_fit_cr = np.polyfit(left_lane.px_y*ym_per_pix, left_lane.px_x*xm_per_pix, 2)
+    right_fit_cr = np.polyfit(right_lane.px_y*ym_per_pix, right_lane.px_x*xm_per_pix, 2)
 
-    return left_curverad, right_curverad
+    # Calculation of R_curve (radius of curvature)
+    left_lane.radius_of_curvature = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+    right_lane.radius_of_curvature = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+
+    curvature = np.mean([left_lane.radius_of_curvature, right_lane.radius_of_curvature])
+
+    return curvature
+
+def measure_position(left_lane, right_lane):
+    # Define conversions in x and y from pixels space to meters
+    xm_per_pix = 3.7/598 # 3.7m lane width is about 598 px
+
+    nearest_left = left_lane.current_fit[0]*720**2 + left_lane.current_fit[1]*720 + left_lane.current_fit[2]
+    nearest_right = right_lane.current_fit[0]*720**2 + right_lane.current_fit[1]*720 + right_lane.current_fit[2]
+
+    midpoint = (nearest_right + nearest_left) / 2
+
+    left_lane.line_base_pos = np.abs(640 - nearest_left) * xm_per_pix
+    right_lane.line_base_pos = np.abs(640 - nearest_right) * xm_per_pix
+
+    dist_from_centre = (midpoint - 640) * xm_per_pix
+
+    return dist_from_centre
 
 def thresholds(img, s_thresh=(170, 255), sx_thresh=(20, 100)):
     img = np.copy(img)
@@ -342,7 +365,15 @@ def thresholds(img, s_thresh=(170, 255), sx_thresh=(20, 100)):
     combined_binary[(s_binary == 1) | (sxbinary == 1)] = 1
     return combined_binary
 
-def pipeline(img, mtx, dist, rvecs, tvecs):
+def pipeline(img_raw, left_lane, right_lane):
+    mtx = np.array([[1.15777942e+03, 0.00000000e+00, 6.67111050e+02],
+                    [0.00000000e+00, 1.15282305e+03, 3.86129068e+02],
+                    [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+    dist = np.array([[-0.24688833, -0.02372817, -0.00109843,  0.00035105, -0.00259134]])
+
+    # Undistort the image
+    img = cv2.undistort(img_raw, mtx, dist, None, mtx)
+
     # Get image size
     img_size = (img.shape[1], img.shape[0])
 
@@ -371,16 +402,22 @@ def pipeline(img, mtx, dist, rvecs, tvecs):
     tf_binary = cv2.warpPerspective(binary, tf_M, img_size)
 
     # Find the lane pixels and fit a polynomial to define right/left boundaries
-    out_img, left_fit, right_fit, ploty = fit_polynomial(tf_binary)
+    out_img, ploty = fit_polynomial(tf_binary, left_lane, right_lane)
 
-    left_radius, right_radius = measure_curvature(left_fit, right_fit, ploty)
-    print(left_radius, right_radius)
+    curvature = measure_curvature(left_lane, right_lane, ploty)
+    dist_from_centre = measure_position(left_lane, right_lane)
+    printout_curv = 'Radius of Curvature = ' + str(round(curvature, 2)) + 'm'
+    printout_dist = 'Vehicle is ' + str(round(dist_from_centre, 2)) + 'm from centre'
 
     # Return the detected lane visuals to the original perspective
     unwarp = cv2.warpPerspective(out_img, tf_M_inv, img_size)
 
     # Overlay result on top of original image
     result = cv2.addWeighted(img, 1, unwarp, 0.3, 0)
+
+    cv2.putText(result,printout_curv,(15,80),cv2.FONT_HERSHEY_SIMPLEX,2,(255,255,255), 2)
+    cv2.putText(result,printout_dist,(15,160),cv2.FONT_HERSHEY_SIMPLEX,2,(255,255,255), 2)
+    
     # cv2.imwrite('./output_images/step4.jpg', cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
 
     return result
