@@ -232,6 +232,10 @@ def fit_polynomial(binary_warped, left_lane, right_lane):
     # Plots the left and right polynomials on the lane lines
     # plt.plot(left_fitx, ploty, color='yellow')
     # plt.plot(right_fitx, ploty, color='yellow')
+    # cv2.polylines(out_img, np.int_(left_boundary), False, (255,255,0), 5)
+    # cv2.polylines(out_img, np.int_(right_boundary), False, (255,255,0), 5)
+
+    # cv2.imwrite('./output_images/step3.jpg', cv2.cvtColor(out_img, cv2.COLOR_RGB2BGR))
 
     return out_img, ploty
 
@@ -310,7 +314,7 @@ def measure_curvature(left_lane, right_lane, ploty):
     '''
     # Define conversions in x and y from pixels space to meters
     ym_per_pix = 3/80.0 # 3m long dashes take up about 80 px
-    xm_per_pix = 3.7/598 # 3.7m lane width is about 598 px
+    xm_per_pix = 3.7/736 # 3.7m lane width is about 598 px
 
     # Define y-value where we want radius of curvature
     y_eval = np.max(ploty)
@@ -349,6 +353,7 @@ def thresholds(img, s_thresh=(170, 255), sx_thresh=(20, 100)):
     hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
     l_channel = hls[:,:,1]
     s_channel = hls[:,:,2]
+
     # Sobel x
     sobelx = cv2.Sobel(l_channel, cv2.CV_64F, 1, 0) # Take the derivative in x
     abs_sobelx = np.absolute(sobelx) # Absolute x derivative to accentuate lines away from horizontal
@@ -379,6 +384,8 @@ def pipeline(img_raw, left_lane, right_lane):
 
     # Apply thresholds and produce binary image
     binary = thresholds(img)
+    # cv2.imwrite('./output_images/step1.jpg', binary * 255)
+
 
     # Set the source points for the transformation
     src = np.float32([[190, 720],
@@ -387,10 +394,10 @@ def pipeline(img_raw, left_lane, right_lane):
                       [1090, 720]])
 
     # Set the destination points for the transformation
-    dst = np.float32([[330, 720],
-                      [330, 0],
-                      [950, 0],
-                      [950, 720]])
+    dst = np.float32([[260, 720],
+                      [260, 0],
+                      [1020, 0],
+                      [1020, 720]])
 
     # Get the tranformation matrix from src to destination
     tf_M = cv2.getPerspectiveTransform(src, dst)
@@ -400,6 +407,7 @@ def pipeline(img_raw, left_lane, right_lane):
 
     # Tranform the perspective of the image to top-down
     tf_binary = cv2.warpPerspective(binary, tf_M, img_size)
+    # cv2.imwrite('./output_images/step2.jpg', tf_binary * 255)
 
     # Find the lane pixels and fit a polynomial to define right/left boundaries
     out_img, ploty = fit_polynomial(tf_binary, left_lane, right_lane)
