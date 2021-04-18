@@ -24,3 +24,14 @@ if __name__ == "__main__":
         savefile += '_out.jpg'
 
         cv2.imwrite('./output_images/' + savefile, cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
+    
+    # Get raw image (still distorted)
+    # img_raw = mpimg.imread('test_images/test5.jpg')
+
+    # # Run undistorted image through pipeline
+    # result = pipeline(img_raw, left_lane, right_lane)
+
+    # savefile = os.path.splitext(photo)[0]
+    # savefile += '_out.jpg'
+
+    # cv2.imwrite('./output_images/' + savefile, cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
