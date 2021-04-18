@@ -22,10 +22,10 @@ if __name__ == "__main__":
                       [1090, 720]])
 
     # Set the destination points for the transformation
-    dst = np.float32([[330, 720],
-                      [330, 0],
-                      [950, 0],
-                      [950, 720]])
+    dst = np.float32([[260, 720],
+                      [260, 0],
+                      [1020, 0],
+                      [1020, 720]])
 
     # Get the tranformation matrix from src to destination
     tf_M = cv2.getPerspectiveTransform(src, dst)
