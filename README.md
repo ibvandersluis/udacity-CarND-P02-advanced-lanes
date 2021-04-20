@@ -6,6 +6,14 @@ A repository for the advanced lane detection exercises and project from Udacity'
 
 Like the first project, the goal of this project is to take an image of the road and build a pipeline to detect the lanes in it. This project will be more difficult, however: the lanes will be curving and there will be shadows on the road. This will require more complicated solutions than the ones implemented previously.
 
+I will create a pipeline that takes an image like this:
+![alt text](./project/test_images/test5.jpg "Sample Input Image")
+
+And I will output the same image with annotations like this:
+![alt text](./project/output_images/test5_out.jpg "Sample Output Image")
+
+I will then apply this pipeline to all images in a video and output the result.
+
 Some basic scripts from the lessons and exercises are located in [`scripts/`](./scripts). The images used for those scripts are found in [`images/`](./images). The project, started from the project Udacity repository [here](https://github.com/udacity/CarND-Advanced-Lane-Lines), is found in [`project/`](./project).
 
 ## The Project
